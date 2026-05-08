@@ -1,0 +1,418 @@
+{
+  "info": {
+    "name": "ProfitCalculator — DACHSER",
+    "description": "All endpoints for the DACHSER ProfitCalculator API.\nSeeded IDs: 101-104 | Cost types: FUEL, CUSTOMS, LABOR, TOLL, STORAGE\nBase URL: http://localhost:8080",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "createdId",
+      "value": "",
+      "type": "string",
+      "description": "Populated automatically by the Create Shipment request"
+    }
+  ],
+  "item": [
+    {
+      "name": "Shipments",
+      "item": [
+        {
+          "name": "Get All — default (page=0, size=10)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments"]
+            },
+            "description": "Returns first page of shipments. Expects 4 seeded records."
+          }
+        },
+        {
+          "name": "Get All — page=1, size=2",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments?page=1&size=2",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "size", "value": "2" }
+              ]
+            },
+            "description": "Second page, 2 per page. Returns items 3-4 of the seeded data."
+          }
+        },
+        {
+          "name": "Get By ID — 101 (found)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/101",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "101"]
+            },
+            "description": "Fetches SHP-2026-001. Expects 200."
+          }
+        },
+        {
+          "name": "Get By ID — 999 (404 Not Found)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "999"]
+            },
+            "description": "Non-existent ID. Expects 404 ProblemDetail."
+          }
+        },
+        {
+          "name": "Get By ID — 0 (400 Validation)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/0",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "0"]
+            },
+            "description": "ID violates @Min(1). Expects 400 ProblemDetail."
+          }
+        },
+        {
+          "name": "Create — valid",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.data && body.data.id) {",
+                  "  pm.collectionVariables.set('createdId', body.data.id);",
+                  "  console.log('createdId set to ' + body.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentRef\": \"SHP-2026-TEST\",\n  \"shipmentDate\": \"2026-05-07\",\n  \"description\": \"Test shipment created via Postman\",\n  \"incomes\": [\n    { \"amount\": 5000.00 },\n    { \"amount\": 1200.00 }\n  ],\n  \"costs\": [\n    { \"amount\": 800.00, \"additionalCost\": 50.00, \"costTypeName\": \"FUEL\" },\n    { \"amount\": 300.00, \"additionalCost\": 0.00,  \"costTypeName\": \"CUSTOMS\" },\n    { \"amount\": 200.00, \"additionalCost\": 25.00, \"costTypeName\": \"TOLL\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments"]
+            },
+            "description": "Creates a shipment. Saves returned ID to {{createdId}} for Update/Delete."
+          }
+        },
+        {
+          "name": "Create — duplicate ref (409 Conflict)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentRef\": \"SHP-2026-001\",\n  \"shipmentDate\": \"2026-05-07\",\n  \"incomes\": [\n    { \"amount\": 1000.00 }\n  ],\n  \"costs\": [\n    { \"amount\": 200.00, \"additionalCost\": 0.00, \"costTypeName\": \"FUEL\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments"]
+            },
+            "description": "SHP-2026-001 already exists. Expects 409 ProblemDetail."
+          }
+        },
+        {
+          "name": "Create — missing required fields (400 Validation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Missing shipmentRef and shipmentDate\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments"]
+            },
+            "description": "shipmentRef and shipmentDate are @NotBlank/@NotNull. Expects 400 with errors map."
+          }
+        },
+        {
+          "name": "Create — negative income amount (400 Validation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentRef\": \"SHP-2026-NEG\",\n  \"shipmentDate\": \"2026-05-07\",\n  \"incomes\": [\n    { \"amount\": -500.00 }\n  ],\n  \"costs\": [\n    { \"amount\": 100.00, \"additionalCost\": 0.00, \"costTypeName\": \"FUEL\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments"]
+            },
+            "description": "Income amount violates @Positive. Expects 400."
+          }
+        },
+        {
+          "name": "Create — invalid cost type (404 Not Found)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentRef\": \"SHP-2026-BADTYPE\",\n  \"shipmentDate\": \"2026-05-07\",\n  \"incomes\": [\n    { \"amount\": 1000.00 }\n  ],\n  \"costs\": [\n    { \"amount\": 200.00, \"additionalCost\": 0.00, \"costTypeName\": \"INVALID_TYPE\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments"]
+            },
+            "description": "INVALID_TYPE doesn't exist in cost_type table. Expects 404 ProblemDetail."
+          }
+        },
+        {
+          "name": "Update — valid (uses {{createdId}})",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentRef\": \"SHP-2026-TEST\",\n  \"shipmentDate\": \"2026-06-01\",\n  \"description\": \"Updated via Postman — costs recalculated\",\n  \"incomes\": [\n    { \"amount\": 7000.00 }\n  ],\n  \"costs\": [\n    { \"amount\": 1000.00, \"additionalCost\": 100.00, \"costTypeName\": \"FUEL\" },\n    { \"amount\": 500.00,  \"additionalCost\": 50.00,  \"costTypeName\": \"STORAGE\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/{{createdId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "{{createdId}}"]
+            },
+            "description": "Full replace update. Run Create first so {{createdId}} is set."
+          }
+        },
+        {
+          "name": "Update — seeded shipment 102",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentRef\": \"SHP-2026-002\",\n  \"shipmentDate\": \"2026-04-12\",\n  \"description\": \"Furniture shipment — costs revised\",\n  \"incomes\": [\n    { \"amount\": 5000.00 }\n  ],\n  \"costs\": [\n    { \"amount\": 1200.00, \"additionalCost\": 200.00, \"costTypeName\": \"FUEL\" },\n    { \"amount\": 600.00,  \"additionalCost\": 0.00,   \"costTypeName\": \"LABOR\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/102",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "102"]
+            },
+            "description": "Updates SHP-2026-002. Old incomes/costs cleared, new ones saved. profitLoss recalculated."
+          }
+        },
+        {
+          "name": "Update — not found (404)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentRef\": \"SHP-GHOST\",\n  \"shipmentDate\": \"2026-05-07\",\n  \"incomes\": [\n    { \"amount\": 1000.00 }\n  ],\n  \"costs\": [\n    { \"amount\": 200.00, \"additionalCost\": 0.00, \"costTypeName\": \"FUEL\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "999"]
+            },
+            "description": "Expects 404 ProblemDetail."
+          }
+        },
+        {
+          "name": "Update — invalid body (400 Validation)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shipmentRef\": \"\",\n  \"shipmentDate\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/101",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "101"]
+            },
+            "description": "Blank shipmentRef and null date. Expects 400 with field errors."
+          }
+        },
+        {
+          "name": "Delete — valid (uses {{createdId}})",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/{{createdId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "{{createdId}}"]
+            },
+            "description": "Deletes the shipment created by the Create request. Run Create first."
+          }
+        },
+        {
+          "name": "Delete — not found (404)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/999",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "999"]
+            },
+            "description": "Expects 404 ProblemDetail."
+          }
+        },
+        {
+          "name": "Delete — invalid ID (400 Validation)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/-1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "-1"]
+            },
+            "description": "Negative ID violates @Min(1). Expects 400 ProblemDetail."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profit",
+      "item": [
+        {
+          "name": "Get All Profits — default",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/profit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "profit"]
+            },
+            "description": "Returns profit/loss summary for all shipments (paginated)."
+          }
+        },
+        {
+          "name": "Get All Profits — page=0, size=2",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/profit?page=0&size=2",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "profit"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "2" }
+              ]
+            },
+            "description": "First 2 records. Verifies pagination metadata (totalElements=4)."
+          }
+        },
+        {
+          "name": "Calculate Profit — 101 (loss: -1375.00)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/101/profit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "101", "profit"]
+            },
+            "description": "Income: 1250 | Costs: 2625 | profitOrLoss: -1375.00 (loss)"
+          }
+        },
+        {
+          "name": "Calculate Profit — 102 (profit: 2500.00)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/102/profit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "102", "profit"]
+            },
+            "description": "Income: 4300 | Costs: 1800 | profitOrLoss: 2500.00"
+          }
+        },
+        {
+          "name": "Calculate Profit — 103 (profit: 4765.00)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/103/profit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "103", "profit"]
+            },
+            "description": "Income: 6100 | Costs: 1335 | profitOrLoss: 4765.00"
+          }
+        },
+        {
+          "name": "Calculate Profit — 104 (profit: 2190.00)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/104/profit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "104", "profit"]
+            },
+            "description": "Income: 3900 | Costs: 1710 | profitOrLoss: 2190.00"
+          }
+        },
+        {
+          "name": "Calculate Profit — 999 (404 Not Found)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/999/profit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "999", "profit"]
+            },
+            "description": "Expects 404 ProblemDetail."
+          }
+        },
+        {
+          "name": "Calculate Profit — 0 (400 Validation)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/shipments/0/profit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "shipments", "0", "profit"]
+            },
+            "description": "ID=0 violates @Min(1). Expects 400 ProblemDetail."
+          }
+        }
+      ]
+    }
+  ]
+}
